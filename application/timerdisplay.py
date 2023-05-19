@@ -3,11 +3,11 @@
 import time
 import datetime
 import sys
-import os
+# import os
 import threading
 import RPi.GPIO as GPIO
 
-sys.path.append(os.path.abspath(os.path.dirname(__file__) + '../rpi-rgb-led-matrix/bindings/python/'))
+# sys.path.append(os.path.abspath(os.path.dirname(__file__) + '../rpi-rgb-led-matrix/bindings/python/'))
 from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 
 # Define state constants
@@ -19,6 +19,7 @@ INTER1 = 4
 INTER2 = 5
 INTER3 = 6
 FINISH = 7
+DISPLAY_TEST = 255
 
 # Set up GPIO pin number for interrupt
 interrupt_pin = 25
@@ -78,7 +79,10 @@ class MyMatrixBase(object):
         self.options = RGBMatrixOptions()
         self.options.rows = 40
         self.options.cols = 80
+        self.options.hardware_mapping = "adafruit-hat"
+        self.options.multiplexing = 19  # P4Outdoor80x40Mapper
         self.options.gpio_slowdown = 4
+        self.options.brightness = 20
 
         self.matrix = RGBMatrix(options=self.options)
 
@@ -353,6 +357,32 @@ class TimerDisplay(MyMatrixBase):
                 self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
                 self.state_configured = True
 
+        elif self.current_state == DISPLAY_TEST:
+            # One-time configure state
+            if not self.state_configured:
+                print("Current state: DISPLAY_TEST")
+                # display
+                self.textColor1 = graphics.Color(255, 0, 0)
+                # timers
+                self.checktick = time.perf_counter()
+                self.state_configured = True
+                self.pixel = int(-1)
+
+            # Recurring actions
+            if (time.perf_counter() - self.checktick) >= 0.01:
+                self.checktick = time.perf_counter()
+
+                self.pixel += 1
+                if self.pixel >= 6400:
+                    self.pixel = 1
+
+                y1, x1 = divmod(self.pixel, 80)
+                print(self.pixel, x1, y1)
+
+                self.offscreen_canvas.Clear()
+                graphics.DrawLine(self.offscreen_canvas, x1, y1, x1, y1, self.textColor1)
+                self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
+ 
         else:
             print("Unknown state.")
 
@@ -405,6 +435,9 @@ class TimerDisplay(MyMatrixBase):
                 self.state_configured = False
                 nextstate = IDLE
                 button_pressed = False
+        elif self.current_state == DISPLAY_TEST:
+                nextstate = DISPLAY_TEST
+
         else:
             print("Unknown state.")
 
