@@ -3,7 +3,7 @@
 import time
 import datetime
 import sys
-# import os
+import os
 import threading
 import RPi.GPIO as GPIO
 
@@ -82,7 +82,7 @@ class MyMatrixBase(object):
         self.options.hardware_mapping = "adafruit-hat"
         self.options.multiplexing = 19  # P4Outdoor80x40Mapper
         self.options.gpio_slowdown = 4
-        self.options.brightness = 20
+        self.options.brightness = 90
 
         self.matrix = RGBMatrix(options=self.options)
 
@@ -122,7 +122,8 @@ class TimerDisplay(MyMatrixBase):
         self.inter3_time = 0.0
         self.finish_time = 0.0
         self.checktick = 0.0
-        self.pilot = "WPA"
+        self.pilot = "XXX"
+        self.fontpath = sys.path[0] + "/../rpi-rgb-led-matrix/fonts/"
 
     def run(self):
         print("running timerdisplay")
@@ -145,8 +146,8 @@ class TimerDisplay(MyMatrixBase):
             if not self.state_configured:
                 print("Current state: IDLE")
                 # display
-                self.font1.LoadFont("../rpi-rgb-led-matrix/fonts/texgyre-27.bdf")
-                self.font2.LoadFont("../rpi-rgb-led-matrix/fonts/6x9.bdf")
+                self.font1.LoadFont(self.fontpath + "texgyre-27.bdf")
+                self.font2.LoadFont(self.fontpath + "6x9.bdf")
                 self.textColor1 = graphics.Color(255, 0, 0)
                 self.textColor2 = graphics.Color(0, 0, 255)
                 # timers
@@ -174,8 +175,8 @@ class TimerDisplay(MyMatrixBase):
             # One-time configure state
             if not self.state_configured:
                 print("Current state: TAKEOFF")
-                self.font1.LoadFont("../rpi-rgb-led-matrix/fonts/6x9.bdf")
-                self.font2.LoadFont("../rpi-rgb-led-matrix/fonts/9x15B.bdf")
+                self.font1.LoadFont(self.fontpath + "6x9.bdf")
+                self.font2.LoadFont(self.fontpath + "9x15B.bdf")
                 self.textColor1 = graphics.Color(0, 0, 255)
                 self.textColor2 = graphics.Color(0, 255, 0)
                 self.offscreen_canvas.Clear()
@@ -190,8 +191,8 @@ class TimerDisplay(MyMatrixBase):
             if not self.state_configured:
                 print("Current state: HOLD")
                 self.checktick = timezero
-                self.font1.LoadFont("../rpi-rgb-led-matrix/fonts/6x9.bdf")
-                self.font2.LoadFont("../rpi-rgb-led-matrix/fonts/texgyre-27.bdf")
+                self.font1.LoadFont(self.fontpath + "6x9.bdf")
+                self.font2.LoadFont(self.fontpath + "texgyre-27.bdf")
                 self.textColor1 = graphics.Color(0, 0, 255)
                 self.textColor2 = graphics.Color(0, 255, 0)
                 self.downcount = 10
@@ -219,8 +220,8 @@ class TimerDisplay(MyMatrixBase):
         elif self.current_state == START:
             if not self.state_configured:
                 print("Current state: START")
-                self.font1.LoadFont("../rpi-rgb-led-matrix/fonts/6x9.bdf")
-                self.font2.LoadFont("../rpi-rgb-led-matrix/fonts/10x20.bdf")
+                self.font1.LoadFont(self.fontpath + "6x9.bdf")
+                self.font2.LoadFont(self.fontpath + "10x20.bdf")
                 self.textColor1 = graphics.Color(0, 0, 255)
                 self.textColor2 = graphics.Color(0, 255, 0)
                 self.line1 = f"Pilot: {self.pilot:3s}"
@@ -240,9 +241,9 @@ class TimerDisplay(MyMatrixBase):
         elif self.current_state == INTER1:
             if not self.state_configured:
                 print("Current state: INTER1")
-                self.font1.LoadFont("../rpi-rgb-led-matrix/fonts/6x9.bdf")
-                self.font2.LoadFont("../rpi-rgb-led-matrix/fonts/10x20.bdf")
-                self.font3.LoadFont("../rpi-rgb-led-matrix/fonts/5x8.bdf")
+                self.font1.LoadFont(self.fontpath + "6x9.bdf")
+                self.font2.LoadFont(self.fontpath + "10x20.bdf")
+                self.font3.LoadFont(self.fontpath + "5x8.bdf")
                 self.textColor1 = graphics.Color(0, 0, 255)
                 self.textColor2 = graphics.Color(0, 255, 0)
                 self.textColor3 = graphics.Color(255, 140, 0)
@@ -268,9 +269,9 @@ class TimerDisplay(MyMatrixBase):
         elif self.current_state == INTER2:
             if not self.state_configured:
                 print("Current state: INTER2")
-                self.font1.LoadFont("../rpi-rgb-led-matrix/fonts/6x9.bdf")
-                self.font2.LoadFont("../rpi-rgb-led-matrix/fonts/10x20.bdf")
-                self.font3.LoadFont("../rpi-rgb-led-matrix/fonts/5x8.bdf")
+                self.font1.LoadFont(self.fontpath + "6x9.bdf")
+                self.font2.LoadFont(self.fontpath + "10x20.bdf")
+                self.font3.LoadFont(self.fontpath + "5x8.bdf")
                 self.textColor1 = graphics.Color(0, 0, 255)
                 self.textColor2 = graphics.Color(0, 255, 0)
                 self.textColor3 = graphics.Color(255, 140, 0)
@@ -298,9 +299,9 @@ class TimerDisplay(MyMatrixBase):
         elif self.current_state == INTER3:
             if not self.state_configured:
                 print("Current state: INTER3")
-                self.font1.LoadFont("../rpi-rgb-led-matrix/fonts/6x9.bdf")
-                self.font2.LoadFont("../rpi-rgb-led-matrix/fonts/10x20.bdf")
-                self.font3.LoadFont("../rpi-rgb-led-matrix/fonts/5x8.bdf")
+                self.font1.LoadFont(self.fontpath + "6x9.bdf")
+                self.font2.LoadFont(self.fontpath + "10x20.bdf")
+                self.font3.LoadFont(self.fontpath + "5x8.bdf")
                 self.textColor1 = graphics.Color(0, 0, 255)
                 self.textColor2 = graphics.Color(0, 255, 0)
                 self.textColor3 = graphics.Color(255, 140, 0)
@@ -330,9 +331,9 @@ class TimerDisplay(MyMatrixBase):
         elif self.current_state == FINISH:
             if not self.state_configured:
                 print("Current state: FINISH")
-                self.font1.LoadFont("../rpi-rgb-led-matrix/fonts/6x9.bdf")
-                self.font2.LoadFont("../rpi-rgb-led-matrix/fonts/10x20.bdf")
-                self.font3.LoadFont("../rpi-rgb-led-matrix/fonts/5x8.bdf")
+                self.font1.LoadFont(self.fontpath + "6x9.bdf")
+                self.font2.LoadFont(self.fontpath + "10x20.bdf")
+                self.font3.LoadFont(self.fontpath + "5x8.bdf")
                 self.textColor1 = graphics.Color(0, 0, 255)
                 self.textColor2 = graphics.Color(0, 255, 0)
                 self.textColor3 = graphics.Color(255, 140, 0)
@@ -446,5 +447,8 @@ class TimerDisplay(MyMatrixBase):
 
 # main function
 if __name__ == "__main__":
+    print(sys.path[0])
+    print(os.path.dirname(os.path.realpath(__file__)))
     timerdisplay = TimerDisplay()
     timerdisplay.start()
+
