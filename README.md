@@ -13,7 +13,7 @@ This project was created as a timer display for F3Q competitions.
 
 > **Disclaimer:** 
 > This project is far from complete, especially on the documentation side. Visit regularly for updates although they might take a while due to my busy workload. 
-> The first prototype however has been successfully tested and is being used during F3Q events of the Belgian national competion.
+> The first prototype however has been successfully tested and is being used during F3Q events of the Belgian national competition.
 
 # In Action
 <video controls width="640" height="360">
