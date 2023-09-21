@@ -21,6 +21,8 @@ This project was created as a timer display for F3Q competitions.
   Your browser does not support the video tag.
 </video>
 
+Alternatively grab it [here: media/workingdemo_web.MOV](https://github.com/WimPauwelsBerthylis/timerdisplay/blob/main/media/workingdemo_web.mov). Apparently it should be <10MB to be viewable here.
+
 # Dependencies
 The control of the matrix display uses a [fork](https://github.com/WimPauwelsBerthylis/rpi-rgb-led-matrix) of the original [rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) project.
 
