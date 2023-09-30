@@ -6,6 +6,8 @@ import sys
 import os
 import threading
 import RPi.GPIO as GPIO
+import pyttsx3
+import alsaaudio
 
 # sys.path.append(os.path.abspath(os.path.dirname(__file__) + '../rpi-rgb-led-matrix/bindings/python/'))
 from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
@@ -73,6 +75,16 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(interrupt_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.add_event_detect(interrupt_pin, GPIO.BOTH, callback=button_press_interrupt_callback)
 
+class Speech(object):
+    def __init__(self, *args, **kwargs):
+        self.engine = pyttsx3.init()
+        self.mixer = alsaaudio.Mixer(control='PCM')
+        self.mixer.setvolume(90)
+
+    def sayit(self, words):
+        self.engine.say(words)
+        self.engine.runAndWait()
+
 
 class MyMatrixBase(object):
     def __init__(self, *args, **kwargs):
@@ -100,7 +112,7 @@ class MyMatrixBase(object):
             sys.exit(0)
 
 
-class TimerDisplay(MyMatrixBase):
+class TimerDisplay(MyMatrixBase, Speech):
     def __init__(self, *args, **kwargs):
         super(TimerDisplay, self).__init__(*args, **kwargs)
 
@@ -130,6 +142,9 @@ class TimerDisplay(MyMatrixBase):
         global button_pressed
         global interrupt_pin
         global timezero
+
+        # Welcome
+        self.sayit("Welcome to timerdisplay.")
 
         # Main loop
         while True:
@@ -201,9 +216,11 @@ class TimerDisplay(MyMatrixBase):
 
             if self.tick:
                 if self.downcount == 0:
+                    saytext = "GO!"
                     self.line2 = "GO!"
                     self.xpos = 14
                 elif (self.downcount > 0):
+                    saytext = str(self.downcount)
                     self.line2 = f"{self.downcount:02d}"
                     self.xpos = 24
                     self.downcount -= 1
@@ -213,6 +230,7 @@ class TimerDisplay(MyMatrixBase):
                 graphics.DrawText(self.offscreen_canvas, self.font2, self.xpos, 34, self.textColor2, self.line2)
                 self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
                 self.tick = False
+                self.sayit()
 
             if (time.perf_counter() - self.checktick) >= (10-self.downcount):
                 self.tick = True 

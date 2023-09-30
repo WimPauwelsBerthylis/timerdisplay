@@ -34,9 +34,12 @@ In the future this might change to some more professional build if I find some t
 - Display interface and RTC: [Adafruit RGB Matrix HAT + RTC for RasPi](https://www.adafruit.com/product/2345)
 - Display: [LysonLed](https://www.aliexpress.com/item/1005003999341251.html?spm=a2g0o.store_pc_groupList.8148356.5.18594718awFMNa&pdp_npi=3%40dis%21EUR%21%E2%82%AC%2024%2C69%21%E2%82%AC%2023%2C69%21%21%21%21%21%402103204216953291358368969e24c1%2112000027694112048%21sh%21BE%21139410429)
 - Power for display: [Daygreen 12/24V to 5V 10A](https://www.aliexpress.com/item/32676859440.html?spm=a2g0o.order_list.order_list_main.46.21ef1802lT2Zrk)
+- Speakers: [Mini External USB Stereo Speaker](https://www.adafruit.com/product/3369)
 - Power for the Pi: custom 12V to Adjustable 5V switching regulator (The Pi4 is power hungry and requires more than 5.0V, more towards 5.2V @ 3A)
 - Custom bread board interface to the GPIO's
 - Custom housing made out of bended aluminium sheets
+
+USB speakers are used because the interface for the display has conflicts with the onboard sound.
 
 !! Use a USB flash drive in the Pi to run from, it will save you a lot of headaches. The SD card gets easily corrupted when not properly shut down.
 
@@ -77,7 +80,59 @@ In the future this might change to some more professional build if I find some t
     sudo apt-get update && sudo apt-get install python3-dev  python3-pillow -y  
     make build-python PYTHON=$(command -v python3)  
     sudo make install-python PYTHON=$(command -v python3)  
+    ```
+- Install the packages for audio:
+    ```
+    sudo apt install espeak
+    sudo apt install python3-pyaudio
+    sudo apt install python3-pip
+    pip install pyttsx3
+    pip install pyalsaaudio   
     ```  
+    disable onboard audio: ```sudo nano /boot/config.txt```
+    ```
+    dtparam=audio=off
+    ```
+    Put the USB sound card as the first fixed audio device:
+    ```
+    sudo nano /etc/modprobe.d/alsa-base.conf
+        options snd-usb-audio index=0
+
+    sudo nano /etc/asound.conf
+        defaults.pcm.card 0
+        defaults.ctl.card 0
+    ```
+
+- enable the Real Time Clock
+    ```
+    sudo apt install -y i2c-tools python3-smbus
+    sudo nano /boot/config.txt
+    ```
+    edits the pi configuration and add: 
+    ```
+    dtoverlay=i2c-rtc,ds1307
+    ```
+    and uncomment:
+    ```
+    dtparam=i2c_arm=on    
+    ```
+    reboot and disable "fake hwclock""
+    ```
+    sudo reboot
+    sudo apt-get -y remove fake-hwclock
+    sudo update-rc.d -f fake-hwclock remove
+    sudo systemctl disable fake-hwclock
+    ```
+    edit hwclock-set: ```sudo nano /lib/udev/hwclock-set``` 
+    and comment the following lines
+    ```
+    #if [ -e /run/systemd/system ] ; then
+    #    exit 0
+    #fi
+
+    #/sbin/hwclock --rtc=$dev --systz
+    ```
+    Plug in Ethernet or WiFi to let the Pi sync the right time from the Internet. Once that's done, run ```sudo hwclock -w``` to write the time, and another ```sudo hwclock -r``` to read the time. Once the time is set, make sure the coin cell battery is inserted so that the time is saved.        
 - test the installation, the display should work now and show the current time and date: 
     ```
     sudo python /home/pi/timerdisplay/application/timerdisplay.py
@@ -103,28 +158,47 @@ In the future this might change to some more professional build if I find some t
 # Temporary placeholders
 ### Manual start
 Starting the timerdisplay application:
-        sudo python <path/to/>timerdisplay/application/timerdisplay.py (sudo python /home/pi/timerdisplay/application/timerdisplay.py)
+    ```
+    sudo python <path/to/>timerdisplay/application/timerdisplay.py (sudo python /home/pi/timerdisplay/application/timerdisplay.py)
+    ```
 
 ### Useful references
 
 Creating the virtual environment:
-        python -m venv `<directory>`              (python -m venv venv)
+    ```
+    python -m venv `<directory>`              (python -m venv venv)
+    ```
 
 Activating the virtual environment:
-        source `<directory>`/bin/activate         (source venv/bin/activate)
+    ```
+    source `<directory>`/bin/activate         (source venv/bin/activate)
+    ```
 
 Deactivating the virtual environment
-        deactivate                              (deactivate)
+    ```
+    deactivate                              (deactivate)
+    ```
 
 Deleting the virtual environment
-        deactivate                              (deactivate)
-        rm -r `<directory>`                       (rm -r venv)
+    ```
+    deactivate                              (deactivate)
+    rm -r `<directory>`                     (rm -r venv)
+    ```
 
 Starting a demo (from ~/rpi-rgb-led-matrix/example-api-use):
-        sudo ./demo -D 1 runtext.ppm --led-brightness=20 --led-cols=80 --led-rows=40 --led-slowdown-gpio=4 --led-gpio-mapping=adafruit-hat --led-multiplexing=19
+    ```
+    sudo ./demo -D 1 runtext.ppm --led-brightness=20 --led-cols=80 --led-rows=40 --led-slowdown-gpio=4 --led-gpio-mapping=adafruit-hat --led-multiplexing=19
+    ```
 
 https://www.dexterindustries.com/howto/run-a-program-on-your-raspberry-pi-at-startup/
 https://medium.com/codex/setup-a-python-script-as-a-service-through-systemctl-systemd-f0cc55a42267
 
-sudo systemctl stop timerdisplay
-sudo systemctl start timerdisplay
+    ```
+    sudo systemctl stop timerdisplay
+    sudo systemctl start timerdisplay
+    ```
+
+USB stick backup:
+    ```
+    sudo dd if=/dev/sda of=/dev/sdb bs=32M status=progress
+    ```
