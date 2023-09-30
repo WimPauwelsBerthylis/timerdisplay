@@ -41,11 +41,41 @@ In the future this might change to some more professional build if I find some t
 !! Use a USB flash drive in the Pi to run from, it will save you a lot of headaches. The SD card gets easily corrupted when not properly shut down.
 
 
+# INSTALL FROM SCRATCH
+- Download the Raspberry Pi Imager from [https://www.raspberrypi.com/software/](https://www.raspberrypi.com/software/)
+- Install the Raspberry Pi OS lite (32bit) on a USB stick through the imager. Use the advanced options to enable ssh and set a username (use pi), password and hostname (wifi optional).
+- Install the USB stick in the Pi and power on, log in through ssh with: ```ssh user@host_or_ip```
+- Install git: ```sudo apt-get install git```
+- Clone [rpi-rgb-led-matrix fork](https://github.com/WimPauwelsBerthylis/rpi-rgb-led-matrix) in your home directory: ```git clone https://github.com/WimPauwelsBerthylis/rpi-rgb-led-matrix.git```
+- Clone [timerdisplay](https://github.com/WimPauwelsBerthylis/timerdisplay): ```git clone https://github.com/WimPauwelsBerthylis/timerdisplay.git```
+- navigate into timerdisplay: ```cd timerdisplay```
+- Create a soft link to the rpi-rgb-led-matrix repo: ```ln -s ../rpi-rgb-led-matrix```
+- navigate to the rgbmatrix python bindings: ```cd rpi-rgb-led-matrix/bindings/python```
+- now install some packages to build the rgbmatrix and build it:
+        ```sudo apt-get update && sudo apt-get install python3-dev python3-pillow -y```
+        ```make build-python PYTHON=$(command -v python3)```
+        ```sudo make install-python PYTHON=$(command -v python3)```
+- test the installation, the display should work now and show the current time and date: ```sudo python /home/pi/timerdisplay/application/timerdisplay.py```
+- last step is to make the timerdisplay start automatically at boot: 
+        ```cd /lib/systemd/system```
+        ```sudo ln -s ~/timerdisplay/timerdisplay.service```
+        ```sudo chmod 644 /lib/systemd/system/timerdisplay.service``` 
+        ```sudo systemctl daemon-reload```
+        ```sudo systemctl enable timerdisplay.service```
+- now reboot the system and the display should start automatically: ```sudo reboot```
+
+
+# EASY INSTALL
+- Download the Raspberry Pi Imager from [https://www.raspberrypi.com/software/](https://www.raspberrypi.com/software/)
+- download the image in /rpi4_img
+- Install the image on the USB stick with the Imager
+
+
 
 # Temporary placeholders
 ### Manual start
 Starting the timerdisplay application:
-        sudo python <path/to/>timerdisplay/application/timerdisplay.py (sudo python /home/admin/timerdisplay/application/timerdisplay.py)
+        sudo python <path/to/>timerdisplay/application/timerdisplay.py (sudo python /home/pi/timerdisplay/application/timerdisplay.py)
 
 ### Useful references
 
@@ -65,9 +95,8 @@ Deleting the virtual environment
 Starting a demo (from ~/rpi-rgb-led-matrix/example-api-use):
         sudo ./demo -D 1 runtext.ppm --led-brightness=20 --led-cols=80 --led-rows=40 --led-slowdown-gpio=4 --led-gpio-mapping=adafruit-hat --led-multiplexing=19
 
-https://www.helping.ninja/how-to-migrate-raspberry-pi-sd-card-to-a-usb-ssd-speedtest/
-
 https://www.dexterindustries.com/howto/run-a-program-on-your-raspberry-pi-at-startup/
+https://medium.com/codex/setup-a-python-script-as-a-service-through-systemctl-systemd-f0cc55a42267
 
 sudo systemctl stop timerdisplay
 sudo systemctl start timerdisplay
