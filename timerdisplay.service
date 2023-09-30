@@ -1,0 +1,10 @@
+[Unit]
+Description=TimerDisplay
+After=multi-user.target
+
+[Service]
+Type=idle
+ExecStart=sudo /usr/bin/python /home/pi/timerdisplay/application/timerdisplay.py
+
+[Install]
+WantedBy=multi-user.target
