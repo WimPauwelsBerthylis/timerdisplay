@@ -81,6 +81,20 @@ USB speakers are used because the interface for the display has conflicts with t
     make build-python PYTHON=$(command -v python3)  
     sudo make install-python PYTHON=$(command -v python3)  
     ```
+- Create a virtual environment
+    ```
+    python -m venv venv
+    ```
+- Install raspberry pi packages:
+    ```
+    pip install RPi.GPIO
+    ```
+- Install supporting packages:
+    ```
+    pip install Pillow
+    sudo apt-get install libopenjp2-7
+
+    ```
 - Install the packages for audio:
     ```
     sudo apt install espeak
@@ -101,6 +115,10 @@ USB speakers are used because the interface for the display has conflicts with t
     sudo nano /etc/asound.conf
         defaults.pcm.card 0
         defaults.ctl.card 0
+    ```
+    Add root user to the audio group:
+    ```
+    sudo adduser root audio
     ```
 
 - enable the Real Time Clock
@@ -141,7 +159,8 @@ USB speakers are used because the interface for the display has conflicts with t
     ```  
     cd /lib/systemd/system  
     sudo ln -s ~/timerdisplay/timerdisplay.service  
-    sudo chmod 644 /lib/systemd/system/timerdisplay.service  
+    sudo chmod 644 /lib/systemd/system/timerdisplay.service
+    sudo chmod +x /home/pi/timerdisplay/application/timerdisplay.py  
     sudo systemctl daemon-reload  
     sudo systemctl enable timerdisplay.service  
     ```  
@@ -160,6 +179,7 @@ USB speakers are used because the interface for the display has conflicts with t
 Starting the timerdisplay application:
     ```
     sudo python <path/to/>timerdisplay/application/timerdisplay.py (sudo python /home/pi/timerdisplay/application/timerdisplay.py)
+    sudo -E env PATH=&PATH python <path/to/>timerdisplay/application/timerdisplay.py (sudo -E env PATH=$PATH python /home/pi/timerdisplay/application/timerdisplay.py)
     ```
 
 ### Useful references

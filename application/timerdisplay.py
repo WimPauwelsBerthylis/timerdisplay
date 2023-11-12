@@ -1,15 +1,19 @@
-#!/usr/bin/env python
+#!/home/pi/timerdisplay/venv/bin/python3
+
+#/usr/bin/python3
+
 
 import time
 import datetime
 import sys
 import os
+import pwd
 import threading
 import RPi.GPIO as GPIO
 import pyttsx3
 import alsaaudio
 
-# sys.path.append(os.path.abspath(os.path.dirname(__file__) + '../rpi-rgb-led-matrix/bindings/python/'))
+sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/../rpi-rgb-led-matrix/bindings/python/'))
 from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 
 # Define state constants
@@ -76,7 +80,8 @@ GPIO.setup(interrupt_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.add_event_detect(interrupt_pin, GPIO.BOTH, callback=button_press_interrupt_callback)
 
 class Speech(object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
+        print("speech init")
         self.engine = pyttsx3.init()
         self.mixer = alsaaudio.Mixer(control='PCM')
         self.mixer.setvolume(90)
@@ -84,10 +89,11 @@ class Speech(object):
     def sayit(self, words):
         self.engine.say(words)
         self.engine.runAndWait()
-
+        pass
 
 class MyMatrixBase(object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
+        print("MyMatrixBase init")
         self.options = RGBMatrixOptions()
         self.options.rows = 40
         self.options.cols = 80
@@ -113,8 +119,11 @@ class MyMatrixBase(object):
 
 
 class TimerDisplay(MyMatrixBase, Speech):
-    def __init__(self, *args, **kwargs):
-        super(TimerDisplay, self).__init__(*args, **kwargs)
+    def __init__(self):
+        #super().__init__()
+        MyMatrixBase.__init__(self)
+        Speech.__init__(self)
+        print("Timerdisplay init")
 
         # configure the display
         self.offscreen_canvas = self.matrix.CreateFrameCanvas()
@@ -212,6 +221,8 @@ class TimerDisplay(MyMatrixBase, Speech):
                 self.textColor2 = graphics.Color(0, 255, 0)
                 self.downcount = 10
                 self.tick = True
+                self.go_quiet = False
+                self.quiet = False
                 self.state_configured = True
 
             if self.tick:
@@ -219,6 +230,7 @@ class TimerDisplay(MyMatrixBase, Speech):
                     saytext = "GO!"
                     self.line2 = "GO!"
                     self.xpos = 14
+                    self.go_quiet = True
                 elif (self.downcount > 0):
                     saytext = str(self.downcount)
                     self.line2 = f"{self.downcount:02d}"
@@ -229,8 +241,11 @@ class TimerDisplay(MyMatrixBase, Speech):
                 graphics.DrawText(self.offscreen_canvas, self.font1, 8, 6, self.textColor1, self.line1)
                 graphics.DrawText(self.offscreen_canvas, self.font2, self.xpos, 34, self.textColor2, self.line2)
                 self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
+                if not self.quiet:
+                    self.sayit(saytext)
+                    if self.go_quiet:
+                        self.quiet = True
                 self.tick = False
-                self.sayit()
 
             if (time.perf_counter() - self.checktick) >= (10-self.downcount):
                 self.tick = True 
@@ -467,6 +482,7 @@ class TimerDisplay(MyMatrixBase, Speech):
 if __name__ == "__main__":
     print(sys.path[0])
     print(os.path.dirname(os.path.realpath(__file__)))
+    print(pwd.getpwuid(os.getuid()))
     timerdisplay = TimerDisplay()
     timerdisplay.start()
 
