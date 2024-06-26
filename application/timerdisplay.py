@@ -587,8 +587,8 @@ class TimerDisplay(MyMatrixBase, Speech):
 # main function
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Optional application arguments")
-    parser.add_argument('--brightness', default=30, type=int, help="Defines the display's brightness. Valid range=0-100. Default=30")
-    parser.add_argument('--loudness', default=25, type=int, help="Defines the speaker's loudness. Valid range=0-100. Default=25")
+    parser.add_argument('--brightness', default=30, const=30, type=int, nargs='?', help="Defines the display's brightness. Valid range=0-100. Default=30")
+    parser.add_argument('--loudness', default=25, const=25, type=int, nargs='?', help="Defines the speaker's loudness. Valid range=0-100. Default=25")
     args = parser.parse_args()
 
     print(sys.path[0])
