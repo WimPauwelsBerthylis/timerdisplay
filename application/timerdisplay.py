@@ -12,20 +12,29 @@ import threading
 import RPi.GPIO as GPIO
 import pyttsx3
 import alsaaudio
+import argparse
+
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/../rpi-rgb-led-matrix/bindings/python/'))
 from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 
 # Define state constants
 IDLE = 0
-TAKEOFF = 1
-HOLD = 2
-START = 3
-INTER1 = 4
-INTER2 = 5
-INTER3 = 6
-FINISH = 7
+TAKEOFF = IDLE + 1
+HOLD = TAKEOFF + 1
+START = HOLD + 1
+WORKWINDOW = START + 1
+INTER1 = WORKWINDOW + 1
+INTER2 = INTER1 + 1 
+INTER3 = INTER2 + 1 
+FINISH = INTER3 + 1
+FAIL = FINISH + 1
 DISPLAY_TEST = 255
+
+TIME_HOLD = 10              # 10 sec
+TIME_WORKWINDOW = 120       # 120 sec
+#SOUND_VOLUME = 20           # 95%
+#BRIGHTNESS = 30             # 90
 
 # Set up GPIO pin number for interrupt
 interrupt_pin = 25
@@ -36,7 +45,7 @@ button_pressed = False
 button_bouncetime_active = False
 #channel_pressed = None
 timezero = 0
-
+force_next_state = False
 
 # Constants
 READTICKPERIOD = 0.1
@@ -80,11 +89,11 @@ GPIO.setup(interrupt_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.add_event_detect(interrupt_pin, GPIO.BOTH, callback=button_press_interrupt_callback)
 
 class Speech(object):
-    def __init__(self):
+    def __init__(self, loudness):
         print("speech init")
         self.engine = pyttsx3.init()
         self.mixer = alsaaudio.Mixer(control='PCM')
-        self.mixer.setvolume(90)
+        self.mixer.setvolume(loudness)
 
     def sayit(self, words):
         self.engine.say(words)
@@ -92,7 +101,7 @@ class Speech(object):
         pass
 
 class MyMatrixBase(object):
-    def __init__(self):
+    def __init__(self, brightness):
         print("MyMatrixBase init")
         self.options = RGBMatrixOptions()
         self.options.rows = 40
@@ -100,7 +109,7 @@ class MyMatrixBase(object):
         self.options.hardware_mapping = "adafruit-hat"
         self.options.multiplexing = 19  # P4Outdoor80x40Mapper
         self.options.gpio_slowdown = 4
-        self.options.brightness = 90
+        self.options.brightness = brightness
 
         self.matrix = RGBMatrix(options=self.options)
 
@@ -114,15 +123,18 @@ class MyMatrixBase(object):
         except KeyboardInterrupt:
             print("\nExiting\n")
             # Clean up GPIO on program exit
+            self.offscreen_canvas.Clear()
+            self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
+            time.sleep(0.2)
             GPIO.cleanup()
             sys.exit(0)
 
 
 class TimerDisplay(MyMatrixBase, Speech):
-    def __init__(self):
+    def __init__(self, args):
         #super().__init__()
-        MyMatrixBase.__init__(self)
-        Speech.__init__(self)
+        MyMatrixBase.__init__(self, args.brightness)
+        Speech.__init__(self, args.loudness)
         print("Timerdisplay init")
 
         # configure the display
@@ -148,9 +160,6 @@ class TimerDisplay(MyMatrixBase, Speech):
 
     def run(self):
         print("running timerdisplay")
-        global button_pressed
-        global interrupt_pin
-        global timezero
 
         # Welcome
         self.sayit("Welcome to timerdisplay.")
@@ -163,6 +172,7 @@ class TimerDisplay(MyMatrixBase, Speech):
     def exec_state(self):
         global button_pressed
         global timezero
+        global force_next_state
 
         # Action state machine, each state should be non-blocking
         if self.current_state == IDLE:
@@ -191,7 +201,7 @@ class TimerDisplay(MyMatrixBase, Speech):
                 self.line2 = self.current_time.strftime("%d-%m-%Y")
                 self.offscreen_canvas.Clear()
 
-                graphics.DrawText(self.offscreen_canvas, self.font1, 6, 25, self.textColor1, self.line1)
+                graphics.DrawText(self.offscreen_canvas, self.font1, 7, 25, self.textColor1, self.line1)
                 graphics.DrawText(self.offscreen_canvas, self.font2, 10, 38, self.textColor2, self.line2)
                 self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
 
@@ -217,9 +227,11 @@ class TimerDisplay(MyMatrixBase, Speech):
                 self.checktick = timezero
                 self.font1.LoadFont(self.fontpath + "6x9.bdf")
                 self.font2.LoadFont(self.fontpath + "texgyre-27.bdf")
+                self.font3.LoadFont(self.fontpath + "5x8.bdf")
                 self.textColor1 = graphics.Color(0, 0, 255)
                 self.textColor2 = graphics.Color(0, 255, 0)
-                self.downcount = 10
+                self.textColor3 = graphics.Color(0, 255, 0)
+                self.downcount = TIME_HOLD
                 self.tick = True
                 self.go_quiet = False
                 self.quiet = False
@@ -229,17 +241,24 @@ class TimerDisplay(MyMatrixBase, Speech):
                 if self.downcount == 0:
                     saytext = "GO!"
                     self.line2 = "GO!"
+                    self.line2ypos = 29
                     self.xpos = 14
+                    #self.line3 = time.strftime("%-M:%S", time.gmtime(TIME_WORKWINDOW))
                     self.go_quiet = True
+                    force_next_state = True
                 elif (self.downcount > 0):
                     saytext = str(self.downcount)
                     self.line2 = f"{self.downcount:02d}"
+                    self.line2ypos = 35
                     self.xpos = 24
+                    #self.line3 = ""
                     self.downcount -= 1
 
                 self.offscreen_canvas.Clear()
                 graphics.DrawText(self.offscreen_canvas, self.font1, 8, 6, self.textColor1, self.line1)
-                graphics.DrawText(self.offscreen_canvas, self.font2, self.xpos, 34, self.textColor2, self.line2)
+                graphics.DrawText(self.offscreen_canvas, self.font2, self.xpos, self.line2ypos, self.textColor2, self.line2)
+                #if self.line3 != "":
+                #    graphics.DrawText(self.offscreen_canvas, self.font3, 30, 39, self.textColor3, self.line3)
                 self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
                 if not self.quiet:
                     self.sayit(saytext)
@@ -247,7 +266,66 @@ class TimerDisplay(MyMatrixBase, Speech):
                         self.quiet = True
                 self.tick = False
 
-            if (time.perf_counter() - self.checktick) >= (10-self.downcount):
+            if (time.perf_counter() - self.checktick) >= (TIME_HOLD-self.downcount):
+                self.tick = True 
+
+        elif self.current_state == WORKWINDOW:
+            if not self.state_configured:
+                print("Current state: WORKWINDOW")
+                self.checktick = time.perf_counter()
+                self.font1.LoadFont(self.fontpath + "6x9.bdf")
+                self.font2.LoadFont(self.fontpath + "texgyre-27.bdf")
+                self.font3.LoadFont(self.fontpath + "5x8.bdf")
+                self.textColor1 = graphics.Color(0, 0, 255)
+                self.textColor2 = graphics.Color(0, 255, 0)
+                self.textColor3 = graphics.Color(0, 255, 0)
+                self.downcount = TIME_WORKWINDOW
+                self.tick = True
+                self.go_quiet = False
+                self.quiet = False
+                self.state_configured = True
+
+            if self.tick:
+                if self.downcount == 0:
+                    self.quiet = False
+                    saytext = "FAIL!"
+                    self.textColor2 = graphics.Color(255, 0, 0)
+                    self.line2 = "FAIL!"
+                    self.line3 = ""
+                    self.xpos = 13
+                    self.line2ypos = 35
+                    self.go_quiet = True
+                    force_next_state = True
+                elif (self.downcount > 10):                    
+                    self.quiet = True
+                    self.line2 = "GO!"
+                    self.line3 = time.strftime("%-M:%S", time.gmtime(self.downcount))
+                    self.xpos = 14
+                    self.line2ypos = 29
+                    self.downcount -= 1
+                elif (self.downcount > 0):                    
+                    self.quiet = False
+                    saytext = str(self.downcount)
+                    self.line2 = "GO!"
+                    self.line3 = time.strftime("%-M:%S", time.gmtime(self.downcount))
+                    self.textColor3 = graphics.Color(255, 140, 0)
+                    self.xpos = 14
+                    self.line2ypos = 29
+                    self.downcount -= 1
+
+                self.offscreen_canvas.Clear()
+                graphics.DrawText(self.offscreen_canvas, self.font1, 8, 6, self.textColor1, self.line1)
+                graphics.DrawText(self.offscreen_canvas, self.font2, self.xpos, self.line2ypos, self.textColor2, self.line2)
+                if self.line3 != "":
+                    graphics.DrawText(self.offscreen_canvas, self.font3, 30, 39, self.textColor3, self.line3)
+                self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
+                if not self.quiet:
+                    self.sayit(saytext)
+                    if self.go_quiet:
+                        self.quiet = True
+                self.tick = False
+
+            if (time.perf_counter() - self.checktick) >= (TIME_WORKWINDOW-self.downcount):
                 self.tick = True 
 
         elif self.current_state == START:
@@ -295,7 +373,7 @@ class TimerDisplay(MyMatrixBase, Speech):
             self.offscreen_canvas.Clear()
             graphics.DrawText(self.offscreen_canvas, self.font1, 8, 6, self.textColor1, self.line1)
             graphics.DrawText(self.offscreen_canvas, self.font2, 4, 25, self.textColor2, self.line2)
-            graphics.DrawText(self.offscreen_canvas, self.font3, 5, 40, self.textColor3, self.line3)
+            graphics.DrawText(self.offscreen_canvas, self.font3, 5, 39, self.textColor3, self.line3)
             self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
             time.sleep(0.01)
 
@@ -325,7 +403,7 @@ class TimerDisplay(MyMatrixBase, Speech):
             self.offscreen_canvas.Clear()
             graphics.DrawText(self.offscreen_canvas, self.font1, 8, 6, self.textColor1, self.line1)
             graphics.DrawText(self.offscreen_canvas, self.font2, 4, 25, self.textColor2, self.line2)
-            graphics.DrawText(self.offscreen_canvas, self.font3, 5, 40, self.textColor3, self.line3)
+            graphics.DrawText(self.offscreen_canvas, self.font3, 5, 39, self.textColor3, self.line3)
             self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
             time.sleep(0.01)
 
@@ -357,7 +435,7 @@ class TimerDisplay(MyMatrixBase, Speech):
             self.offscreen_canvas.Clear()
             graphics.DrawText(self.offscreen_canvas, self.font1, 8, 6, self.textColor1, self.line1)
             graphics.DrawText(self.offscreen_canvas, self.font2, 4, 25, self.textColor2, self.line2)
-            graphics.DrawText(self.offscreen_canvas, self.font3, 5, 40, self.textColor3, self.line3)
+            graphics.DrawText(self.offscreen_canvas, self.font3, 5, 39, self.textColor3, self.line3)
             self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
             time.sleep(0.01)
 
@@ -387,8 +465,13 @@ class TimerDisplay(MyMatrixBase, Speech):
                 self.offscreen_canvas.Clear()
                 graphics.DrawText(self.offscreen_canvas, self.font1, 8, 6, self.textColor1, self.line1)
                 graphics.DrawText(self.offscreen_canvas, self.font2, 4, 25, self.textColor2, self.line2)
-                graphics.DrawText(self.offscreen_canvas, self.font3, 5, 40, self.textColor3, self.line3)
+                graphics.DrawText(self.offscreen_canvas, self.font3, 5, 39, self.textColor3, self.line3)
                 self.offscreen_canvas = self.matrix.SwapOnVSync(self.offscreen_canvas)
+                self.state_configured = True
+
+        elif self.current_state == FAIL:
+            if not self.state_configured:
+                print("Current state: FAIL")
                 self.state_configured = True
 
         elif self.current_state == DISPLAY_TEST:
@@ -422,6 +505,8 @@ class TimerDisplay(MyMatrixBase, Speech):
 
     def next_state(self):
         global button_pressed
+        global force_next_state
+        global timezero
         nextstate = self.current_state
 
         if self.current_state == IDLE:
@@ -437,9 +522,25 @@ class TimerDisplay(MyMatrixBase, Speech):
         elif self.current_state == HOLD:
             if button_pressed:
                 self.state_configured = False
+                nextstate = WORKWINDOW
+                self.start_time = timezero
+                button_pressed = False
+            if force_next_state:
+                self.state_configured = False
+                nextstate = WORKWINDOW
+                button_pressed = False
+                force_next_state = False
+        elif self.current_state == WORKWINDOW:
+            if button_pressed:
+                self.state_configured = False
                 nextstate = START
                 self.start_time = timezero
                 button_pressed = False
+            if force_next_state:
+                self.state_configured = False
+                nextstate = FAIL
+                button_pressed = False
+                force_next_state = False
         elif self.current_state == START:
             if button_pressed:
                 self.state_configured = False
@@ -469,6 +570,11 @@ class TimerDisplay(MyMatrixBase, Speech):
                 self.state_configured = False
                 nextstate = IDLE
                 button_pressed = False
+        elif self.current_state == FAIL:
+            if button_pressed:
+                self.state_configured = False
+                nextstate = IDLE
+                button_pressed = False
         elif self.current_state == DISPLAY_TEST:
                 nextstate = DISPLAY_TEST
 
@@ -480,9 +586,16 @@ class TimerDisplay(MyMatrixBase, Speech):
 
 # main function
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Optional application arguments")
+    parser.add_argument('--brightness', default=30, type=int, help="Defines the display's brightness. Valid range=0-100. Default=30")
+    parser.add_argument('--loudness', default=25, type=int, help="Defines the speaker's loudness. Valid range=0-100. Default=25")
+    args = parser.parse_args()
+
     print(sys.path[0])
     print(os.path.dirname(os.path.realpath(__file__)))
     print(pwd.getpwuid(os.getuid()))
-    timerdisplay = TimerDisplay()
+    print(args)
+
+    timerdisplay = TimerDisplay(args)
     timerdisplay.start()
 
